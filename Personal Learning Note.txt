@@ -1,0 +1,71 @@
+eksctl create cluster --name=david-eks-demo \
+                      --region=ap-southeast-2 \
+                      --zones=ap-southeast-2a,ap-southeast-2b \
+                      --without-nodegroup \
+                      --version=1.29 \
+                      --auto-kubeconfig
+
+
+
+eksctl utils associate-iam-oidc-provider \
+    --region ap-southeast-2 \
+    --cluster david-eks-demo \
+    --approve
+
+
+eksctl utils associate-iam-oidc-provider \
+    --region ap-southeast-2 \
+    --cluster david-eks-demo \
+    --approve
+
+
+eksctl create nodegroup --cluster=david-eks-demo \
+                        --region=ap-southeast-2 \
+                        --name=david-eks-demo-ng-public1 \
+                        --node-type=t3.medium \
+                        --nodes=2 \
+                        --nodes-min=2 \
+                        --nodes-max=4 \
+                        --node-volume-size=20 \
+                        --managed \
+                        --asg-access \
+                        --external-dns-access \
+                        --full-ecr-access \
+                        --appmesh-access \
+                        --alb-ingress-access 
+
+
+arn:aws:iam::851725321228:policy/ALBIngressControllerIAMPolicy
+
+
+eksctl create iamserviceaccount \
+    --region ap-southeast-2 \
+    --name alb-ingress-controller \
+    --namespace kube-system \
+    --cluster david-eks-demo \
+    --attach-policy-arn arn:aws:iam::851725321228:policy/ALBIngressControllerIAMPolicy \
+    --override-existing-serviceaccounts \
+    --approve
+
+arn:aws:iam::851725321228:policy/AWSLoadBalancerControllerIAMPolicy
+
+eksctl create iamserviceaccount \
+  --cluster=david-eks-demo \
+  --namespace=kube-system \
+  --name=aws-load-balancer-controller \
+  --attach-policy-arn=arn:aws:iam::851725321228:policy/AWSLoadBalancerControllerIAMPolicy \
+  --override-existing-serviceaccounts \
+  --approve
+
+
+eksctl  get iamserviceaccount --cluster david-esk-demo
+
+
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system \
+  --set clusterName=david-eks-demo \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=ap-southeast-2 \
+  --set vpcId=vpc-0a62bb4027605fbcc \
+  --set image.repository=602401143452.dkr.ecr.ap-southeast-2.amazonaws.com/amazon/aws-load-balancer-controller
